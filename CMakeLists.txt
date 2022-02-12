@@ -32,6 +32,8 @@ if(${BUILD_CPP})
 endif()
 add_subdirectory("tutorials")
 
+add_subdirectory("camera imu logger/${TYPE}")
+
 if(${INSTALL_SAMPLES} AND ${BUILD_CPP})
     INSTALL(TARGETS ${SAMPLE_LIST} RUNTIME DESTINATION ${CMAKE_SOURCE_DIR}/bin)
 endif()
