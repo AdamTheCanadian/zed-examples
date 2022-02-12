@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <Windows.h>
+#include <ctime>
 
 // ZED include
 #include <sl/Camera.hpp>
@@ -38,8 +39,7 @@ int main(int argc, char **argv) {
     sl::Camera zed;
     
     sl::InitParameters init_parameters;
-    init_parameters.sdk_verbose = true;
-    init_parameters.camera_resolution= sl::RESOLUTION::HD720;
+    init_parameters.camera_resolution= sl::RESOLUTION::HD2K;
     // We are just logging data, so we dont need to compute depth
     init_parameters.depth_mode = sl::DEPTH_MODE::NONE;
 
@@ -50,34 +50,40 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    // Print camera information
-    auto camera_info = zed.getCameraInformation();
-    std::cout << std::endl;
-    std::cout <<"ZED Model                 : "<<camera_info.camera_model << std::endl;
-    std::cout <<"ZED Serial Number         : "<< camera_info.serial_number << std::endl;
-    std::cout <<"ZED Camera Firmware       : "<< camera_info.camera_configuration.firmware_version <<"/"<<camera_info.sensors_configuration.firmware_version<< std::endl;
-    std::cout <<"ZED Camera Resolution     : "<< camera_info.camera_configuration.resolution.width << "x" << camera_info.camera_configuration.resolution.height << std::endl;
-    std::cout <<"ZED Camera FPS            : "<< zed.getInitParameters().camera_fps << std::endl;
-    
-    sl::Mat zed_image;
-    
+    // Setup output svo file name
+    time_t rawtime;
+    struct tm* time_info;
+    char buffer[256];
+    time(&rawtime);
+    time_info = localtime(&rawtime);
+
+    std::strftime(buffer, sizeof(buffer), "C:\\Users\\aclare\\Documents\\%Y_%m_%d_%H_%M_%S.svo", time_info);
+    std::string svo_file_name(buffer);
+    std::strftime(buffer, sizeof(buffer), "C:\\Users\\aclare\\Documents\\%Y_%m_%d_%H_%M_%S.imu", time_info);
+    std::string imu_file_name(buffer);
+
+    std::cout << "SVO: " << svo_file_name << std::endl;
+    std::cout << "IMU: " << imu_file_name << std::endl;
+
+    sl::String svo_name = sl::String(svo_file_name.c_str());
+    returned_state = zed.enableRecording(
+        sl::RecordingParameters(svo_name, sl::SVO_COMPRESSION_MODE::H264));
+    if (returned_state != sl::ERROR_CODE::SUCCESS) {
+        print("Recording ZED : ", returned_state);
+        zed.close();
+        return EXIT_FAILURE;
+    }
+
+
     SetCtrlHandler();
     char key = ' ';
     while (!exit_app) {
         // Check that a new image is successfully acquired
         returned_state = zed.grab();
-        if (returned_state == sl::ERROR_CODE::SUCCESS) {
-            // Retrieve left image
-            zed.retrieveImage(zed_image, sl::VIEW::LEFT);
-
-        }
-        else {
-            print("Error during capture : ", returned_state);
-            break;
-        }  
     }
 
     // Exit
+    zed.disableRecording();
     zed.close();
     return EXIT_SUCCESS;
 }
